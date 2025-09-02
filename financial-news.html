@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>美国金融市场新闻简报</title>
+    <!-- 使用稳定的CDN资源 -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 确保基本样式 */
+        body { margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+        .loading { display: flex; justify-content: center; align-items: center; height: 100vh; }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div class="loading">
+            <div>Loading...</div>
+        </div>
+    </div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // 定义图标组件（替代lucide-react）
+        const TrendingUp = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+        );
+
+        const DollarSign = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+            </svg>
+        );
+
+        const BarChart3 = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+        );
+
+        const RefreshCw = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+        );
+
+        const Clock = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        );
+
+        const ExternalLink = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+        );
+
+        const Star = ({ className }) => (
+            <svg className={className} fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+            </svg>
+        );
+
+        const FinancialNewsSystem = () => {
+          const [news, setNews] = useState([]);
+          const [loading, setLoading] = useState(false);
+          const [selectedCategory, setSelectedCategory] = useState('all');
+          const [lastUpdate, setLastUpdate] = useState(new Date());
+
+          // 模拟新闻数据
+          const mockNews = [
+            {
+              id: 1,
+              title: "美联储官员暗示可能在下次会议上降息",
+              summary: "多位美联储官员表示，考虑到通胀压力缓解和就业市场稳定，央行可能在即将到来的政策会议上考虑降息措施。",
+              category: "monetary_policy",
+              importance: 9,
+              timestamp: new Date(Date.now() - 30 * 60 * 1000),
+              source: "Bloomberg",
+              url: "#"
+            },
+            {
+              id: 2,
+              title: "科技股推动纳斯达克指数创新高",
+              summary: "受AI相关公司强劲财报推动，纳斯达克综合指数上涨2.3%，创下历史新高。苹果、微软等权重股表现强劲。",
+              category: "stock_market",
+              importance: 8,
+              timestamp: new Date(Date.now() - 45 * 60 * 1000),
+              source: "Wall Street Journal",
+              url: "#"
+            },
+            {
+              id: 3,
+              title: "美国第三季度GDP增长超预期",
+              summary: "商务部公布数据显示，美国第三季度GDP年化增长率达到4.2%，远超经济学家预期的3.1%，主要得益于消费支出强劲。",
+              category: "economic_data",
+              importance: 9,
+              timestamp: new Date(Date.now() - 60 * 60 * 1000),
+              source: "Reuters",
+              url: "#"
+            },
+            {
+              id: 4,
+              title: "美元指数走强，新兴市场货币承压",
+              summary: "美元指数升至103.2，创三个月新高。强势美元对新兴市场货币造成压力，人民币、欧元等主要货币走弱。",
+              category: "currency",
+              importance: 7,
+              timestamp: new Date(Date.now() - 90 * 60 * 1000),
+              source: "Financial Times",
+              url: "#"
+            },
+            {
+              id: 5,
+              title: "能源股受油价上涨推动大幅走高",
+              summary: "WTI原油价格突破85美元/桶，能源板块领涨，埃克森美孚、雪佛龙等公司股价涨幅超过5%。",
+              category: "commodities",
+              importance: 6,
+              timestamp: new Date(Date.now() - 120 * 60 * 1000),
+              source: "CNBC",
+              url: "#"
+            },
+            {
+              id: 6,
+              title: "美国失业率降至3.4%，创50年新低",
+              summary: "劳工部数据显示，9月份失业率进一步下降至3.4%，非农就业人数增加31.5万，远超预期，显示就业市场持续强劲。",
+              category: "employment",
+              importance: 8,
+              timestamp: new Date(Date.now() - 150 * 60 * 1000),
+              source: "MarketWatch",
+              url: "#"
+            },
+            {
+              id: 7,
+              title: "房地产市场显现复苏迹象",
+              summary: "全美房地产经纪人协会报告显示，现房销售环比增长3.2%，房价涨幅放缓，市场活动有所回暖。",
+              category: "real_estate",
+              importance: 6,
+              timestamp: new Date(Date.now() - 180 * 60 * 1000),
+              source: "Yahoo Finance",
+              url: "#"
+            },
+            {
+              id: 8,
+              title: "银行业三季度财报表现强劲",
+              summary: "摩根大通、美国银行等大型银行三季度净利润普遍超预期，受益于净息差改善和信贷损失减少。",
+              category: "banking",
+              importance: 7,
+              timestamp: new Date(Date.now() - 210 * 60 * 1000),
+              source: "Bloomberg",
+              url: "#"
+            },
+            {
+              id: 9,
+              title: "通胀数据显示价格压力持续缓解",
+              summary: "9月份CPI同比上涨3.2%，环比持平，核心CPI上涨4.1%，均低于预期，通胀降温趋势明确。",
+              category: "inflation",
+              importance: 9,
+              timestamp: new Date(Date.now() - 240 * 60 * 1000),
+              source: "Wall Street Journal",
+              url: "#"
+            },
+            {
+              id: 10,
+              title: "零售销售数据疲软引发消费担忧",
+              summary: "9月份零售销售环比下降0.4%，为连续第二个月下降，反映出消费者支出可能正在放缓。",
+              category: "retail",
+              importance: 7,
+              timestamp: new Date(Date.now() - 270 * 60 * 1000),
+              source: "Reuters",
+              url: "#"
+            }
+          ];
+
+          const categories = {
+            'all': { label: '全部', icon: BarChart3, color: 'blue' },
+            'monetary_policy': { label: '货币政策', icon: DollarSign, color: 'green' },
+            'stock_market': { label: '股票市场', icon: TrendingUp, color: 'purple' },
+            'economic_data': { label: '经济数据', icon: BarChart3, color: 'blue' },
+            'currency': { label: '外汇市场', icon: DollarSign, color: 'yellow' },
+            'commodities': { label: '大宗商品', icon: BarChart3, color: 'orange' },
+            'employment': { label: '就业数据', icon: TrendingUp, color: 'green' },
+            'real_estate': { label: '房地产', icon: BarChart3, color: 'red' },
+            'banking': { label: '银行业', icon: DollarSign, color: 'blue' },
+            'inflation': { label: '通胀数据', icon: TrendingUp, color: 'red' },
+            'retail': { label: '零售消费', icon: BarChart3, color: 'purple' }
+          };
+
+          useEffect(() => {
+            setNews(mockNews);
+          }, []);
+
+          const refreshNews = async () => {
+            setLoading(true);
+            setTimeout(() => {
+              setNews([...mockNews].sort(() => Math.random() - 0.5));
+              setLastUpdate(new Date());
+              setLoading(false);
+            }, 1500);
+          };
+
+          const filteredNews = selectedCategory === 'all' 
+            ? news 
+            : news.filter(item => item.category === selectedCategory);
+
+          const getImportanceColor = (importance) => {
+            if (importance >= 9) return 'text-red-600 bg-red-100';
+            if (importance >= 7) return 'text-orange-600 bg-orange-100';
+            return 'text-blue-600 bg-blue-100';
+          };
+
+          const formatTime = (timestamp) => {
+            const now = new Date();
+            const diff = now - timestamp;
+            const minutes = Math.floor(diff / (1000 * 60));
+            const hours = Math.floor(minutes / 60);
+            
+            if (minutes < 60) return `${minutes}分钟前`;
+            if (hours < 24) return `${hours}小时前`;
+            return timestamp.toLocaleDateString();
+          };
+
+          return (
+            <div className="min-h-screen bg-gray-50 p-6">
+              <div className="max-w-6xl mx-auto">
+                {/* 标题栏 */}
+                <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="bg-blue-600 p-2 rounded-lg">
+                        <TrendingUp className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h1 className="text-2xl font-bold text-gray-900">美国金融市场新闻简报</h1>
+                        <p className="text-gray-600 flex items-center space-x-2">
+                          <Clock className="h-4 w-4" />
+                          <span>最后更新: {lastUpdate.toLocaleString()}</span>
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={refreshNews}
+                      disabled={loading}
+                      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                      <span>{loading ? '更新中...' : '刷新新闻'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 分类筛选 */}
+                <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(categories).map(([key, category]) => {
+                      const Icon = category.icon;
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => setSelectedCategory(key)}
+                          className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                            selectedCategory === key
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          <Icon className="h-4 w-4" />
+                          <span>{category.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 新闻列表 */}
+                <div className="space-y-4">
+                  {filteredNews.map((article, index) => (
+                    <div key={article.id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                      <div className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="text-2xl font-bold text-gray-400">
+                              {String(index + 1).padStart(2, '0')}
+                            </div>
+                            <div className={`px-2 py-1 rounded-full text-xs font-medium ${getImportanceColor(article.importance)}`}>
+                              重要度: {article.importance}/10
+                            </div>
+                            <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                              {categories[article.category]?.label}
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 text-xs text-gray-500">
+                            <span>{article.source}</span>
+                            <span>•</span>
+                            <span>{formatTime(article.timestamp)}</span>
+                          </div>
+                        </div>
+                        
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3 hover:text-blue-600 cursor-pointer">
+                          {article.title}
+                        </h3>
+                        
+                        <p className="text-gray-600 mb-4 leading-relaxed">
+                          {article.summary}
+                        </p>
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            {article.importance >= 8 && (
+                              <div className="flex items-center space-x-1 text-yellow-600">
+                                <Star className="h-4 w-4 fill-current" />
+                                <span className="text-xs font-medium">高关注</span>
+                              </div>
+                            )}
+                          </div>
+                          <button className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm font-medium">
+                            <span>阅读全文</span>
+                            <ExternalLink className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 统计信息 */}
+                <div className="bg-white rounded-lg shadow-sm p-6 mt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">{filteredNews.length}</div>
+                      <div className="text-sm text-gray-600">今日新闻总数</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-red-600">
+                        {filteredNews.filter(n => n.importance >= 9).length}
+                      </div>
+                      <div className="text-sm text-gray-600">高重要度新闻</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">
+                        {filteredNews.filter(n => n.category === 'monetary_policy' || n.category === 'economic_data').length}
+                      </div>
+                      <div className="text-sm text-gray-600">政策经济类</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-purple-600">
+                        {filteredNews.filter(n => n.category === 'stock_market').length}
+                      </div>
+                      <div className="text-sm text-gray-600">股市相关</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        // 确保DOM加载完成后再渲染
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<FinancialNewsSystem />);
+    </script>
+</body>
+</html>
