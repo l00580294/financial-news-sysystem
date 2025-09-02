@@ -14,6 +14,9 @@
         /* 确保基本样式 */
         body { margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
         .loading { display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .modal-overlay { backdrop-filter: blur(4px); }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
@@ -26,7 +29,7 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // 定义图标组件（替代lucide-react）
+        // 定义图标组件
         const TrendingUp = ({ className }) => (
             <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -69,18 +72,196 @@
             </svg>
         );
 
+        const X = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        );
+
+        const Share = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+            </svg>
+        );
+
+        const Bookmark = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+        );
+
+        // 新闻详情模态框组件
+        const NewsModal = ({ article, onClose }) => {
+          if (!article) return null;
+
+          const handleShare = () => {
+            if (navigator.share) {
+              navigator.share({
+                title: article.title,
+                text: article.summary,
+                url: window.location.href
+              });
+            } else {
+              navigator.clipboard.writeText(`${article.title}\n${article.summary}\n${window.location.href}`);
+              alert('内容已复制到剪贴板！');
+            }
+          };
+
+          const handleBookmark = () => {
+            const bookmarks = JSON.parse(localStorage.getItem('newsBookmarks') || '[]');
+            const isBookmarked = bookmarks.find(b => b.id === article.id);
+            
+            if (isBookmarked) {
+              const newBookmarks = bookmarks.filter(b => b.id !== article.id);
+              localStorage.setItem('newsBookmarks', JSON.stringify(newBookmarks));
+              alert('已取消收藏');
+            } else {
+              bookmarks.push(article);
+              localStorage.setItem('newsBookmarks', JSON.stringify(bookmarks));
+              alert('已添加到收藏');
+            }
+          };
+
+          return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 modal-overlay flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto fade-in">
+                <div className="p-6">
+                  {/* 头部 */}
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                          {article.source}
+                        </span>
+                        <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">
+                          {new Date(article.timestamp).toLocaleString()}
+                        </span>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          article.importance >= 9 ? 'bg-red-100 text-red-800' :
+                          article.importance >= 7 ? 'bg-orange-100 text-orange-800' :
+                          'bg-blue-100 text-blue-800'
+                        }`}>
+                          重要度: {article.importance}/10
+                        </span>
+                      </div>
+                      <h1 className="text-2xl font-bold text-gray-900 mb-4">
+                        {article.title}
+                      </h1>
+                    </div>
+                    <button
+                      onClick={onClose}
+                      className="ml-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <X className="h-6 w-6 text-gray-500" />
+                    </button>
+                  </div>
+
+                  {/* 操作按钮 */}
+                  <div className="flex space-x-3 mb-6">
+                    <button
+                      onClick={handleShare}
+                      className="flex items-center space-x-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                    >
+                      <Share className="h-4 w-4" />
+                      <span>分享</span>
+                    </button>
+                    <button
+                      onClick={handleBookmark}
+                      className="flex items-center space-x-2 px-4 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                      <Bookmark className="h-4 w-4" />
+                      <span>收藏</span>
+                    </button>
+                  </div>
+
+                  {/* 新闻内容 */}
+                  <div className="prose max-w-none">
+                    <div className="text-lg text-gray-700 leading-relaxed mb-6 p-4 bg-gray-50 rounded-lg">
+                      <strong>新闻摘要：</strong><br />
+                      {article.summary}
+                    </div>
+
+                    {/* 详细内容（模拟） */}
+                    <div className="space-y-4 text-gray-700 leading-relaxed">
+                      <h3 className="text-lg font-semibold text-gray-900">详细报道</h3>
+                      
+                      {article.category === 'monetary_policy' && (
+                        <div className="space-y-4">
+                          <p>据知情人士透露，美联储内部对于下一步货币政策走向存在不同观点。支持降息的官员认为，当前通胀压力已经得到有效控制，劳动力市场保持稳定，适当的货币宽松政策有助于维持经济增长动力。</p>
+                          <p>然而，也有部分官员持谨慎态度，担心过早降息可能重新点燃通胀预期。他们建议继续观察经济数据，特别是就业和消费支出的变化趋势。</p>
+                          <p>市场分析师普遍预期，如果经济数据继续支持降息预期，美联储在下次FOMC会议上实施25个基点降息的可能性较大。这一政策调整将对股市、债市和美元汇率产生重要影响。</p>
+                        </div>
+                      )}
+                      
+                      {article.category === 'stock_market' && (
+                        <div className="space-y-4">
+                          <p>科技股的强劲表现主要得益于人工智能相关公司的业绩超预期。苹果公司在最新财报中展示了AI功能在新产品中的成功应用，推动股价上涨3.5%。微软凭借其Azure云服务和AI解决方案的快速增长，股价涨幅达到4.2%。</p>
+                          <p>英伟达作为AI芯片领域的领军企业，其股价更是暴涨7.8%，成为推动纳斯达克指数创新高的主要动力。分析师认为，AI技术的商业化应用正在加速，相关公司的盈利前景依然乐观。</p>
+                          <p>除了科技股外，其他板块表现相对平稳。金融股受到利率预期影响小幅下跌，而消费股则因消费数据疲软而承压。</p>
+                        </div>
+                      )}
+                      
+                      {article.category === 'economic_data' && (
+                        <div className="space-y-4">
+                          <p>第三季度GDP的超预期增长主要得益于个人消费支出的强劲表现。数据显示，消费支出在GDP增长中贡献了2.8个百分点，远超预期的2.1个百分点。</p>
+                          <p>企业投资也保持了较好的增长势头，特别是在科技和制造业领域的固定资产投资增长显著。这表明企业对未来经济前景保持乐观态度。</p>
+                          <p>不过，贸易逆差的扩大对GDP增长产生了一定的拖累作用。经济学家预计，如果贸易状况能够得到改善，第四季度的经济增长可能会更加强劲。</p>
+                        </div>
+                      )}
+                      
+                      {/* 默认内容 */}
+                      {!['monetary_policy', 'stock_market', 'economic_data'].includes(article.category) && (
+                        <div className="space-y-4">
+                          <p>这是一条重要的金融市场新闻，对投资者和市场参与者具有重要的参考价值。相关部门和机构正在密切关注事态发展，并可能根据情况调整相关政策或策略。</p>
+                          <p>市场分析师建议投资者保持理性，根据自身风险偏好和投资目标做出相应的投资决策。同时，建议持续关注相关后续报道和官方声明。</p>
+                          <p>更多详细信息和深度分析，请关注我们的后续报道或访问相关官方网站获取最新资讯。</p>
+                        </div>
+                      )}
+
+                      {/* 相关影响分析 */}
+                      <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                        <h4 className="font-semibold text-blue-900 mb-2">市场影响分析</h4>
+                        <ul className="list-disc list-inside text-blue-800 space-y-1">
+                          <li>短期内可能对相关板块股价产生积极影响</li>
+                          <li>投资者情绪有望得到进一步改善</li>
+                          <li>可能影响美联储未来的政策决策</li>
+                          <li>建议关注后续数据和政策动向</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 底部操作区 */}
+                  <div className="mt-8 pt-6 border-t border-gray-200 flex justify-between items-center">
+                    <div className="text-sm text-gray-500">
+                      本文为模拟新闻内容，仅供演示使用
+                    </div>
+                    <button
+                      onClick={onClose}
+                      className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                      关闭
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
         const FinancialNewsSystem = () => {
           const [news, setNews] = useState([]);
           const [loading, setLoading] = useState(false);
           const [selectedCategory, setSelectedCategory] = useState('all');
           const [lastUpdate, setLastUpdate] = useState(new Date());
+          const [selectedArticle, setSelectedArticle] = useState(null);
 
-          // 模拟新闻数据
+          // 模拟新闻数据（扩展版本）
           const mockNews = [
             {
               id: 1,
               title: "美联储官员暗示可能在下次会议上降息",
-              summary: "多位美联储官员表示，考虑到通胀压力缓解和就业市场稳定，央行可能在即将到来的政策会议上考虑降息措施。",
+              summary: "多位美联储官员表示，考虑到通胀压力缓解和就业市场稳定，央行可能在即将到来的政策会议上考虑降息措施。市场对此反应积极，美股期货上涨。",
               category: "monetary_policy",
               importance: 9,
               timestamp: new Date(Date.now() - 30 * 60 * 1000),
@@ -90,7 +271,7 @@
             {
               id: 2,
               title: "科技股推动纳斯达克指数创新高",
-              summary: "受AI相关公司强劲财报推动，纳斯达克综合指数上涨2.3%，创下历史新高。苹果、微软等权重股表现强劲。",
+              summary: "受AI相关公司强劲财报推动，纳斯达克综合指数上涨2.3%，创下历史新高。苹果、微软等权重股表现强劲，投资者对科技股前景保持乐观。",
               category: "stock_market",
               importance: 8,
               timestamp: new Date(Date.now() - 45 * 60 * 1000),
@@ -100,7 +281,7 @@
             {
               id: 3,
               title: "美国第三季度GDP增长超预期",
-              summary: "商务部公布数据显示，美国第三季度GDP年化增长率达到4.2%，远超经济学家预期的3.1%，主要得益于消费支出强劲。",
+              summary: "商务部公布数据显示，美国第三季度GDP年化增长率达到4.2%，远超经济学家预期的3.1%，主要得益于消费支出强劲和企业投资增加。",
               category: "economic_data",
               importance: 9,
               timestamp: new Date(Date.now() - 60 * 60 * 1000),
@@ -227,6 +408,14 @@
             return timestamp.toLocaleDateString();
           };
 
+          const openArticle = (article) => {
+            setSelectedArticle(article);
+          };
+
+          const closeArticle = () => {
+            setSelectedArticle(null);
+          };
+
           return (
             <div className="min-h-screen bg-gray-50 p-6">
               <div className="max-w-6xl mx-auto">
@@ -303,7 +492,8 @@
                           </div>
                         </div>
                         
-                        <h3 className="text-lg font-semibold text-gray-900 mb-3 hover:text-blue-600 cursor-pointer">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3 hover:text-blue-600 cursor-pointer"
+                            onClick={() => openArticle(article)}>
                           {article.title}
                         </h3>
                         
@@ -320,7 +510,10 @@
                               </div>
                             )}
                           </div>
-                          <button className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm font-medium">
+                          <button 
+                            onClick={() => openArticle(article)}
+                            className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
+                          >
                             <span>阅读全文</span>
                             <ExternalLink className="h-4 w-4" />
                           </button>
@@ -358,6 +551,14 @@
                   </div>
                 </div>
               </div>
+
+              {/* 新闻详情模态框 */}
+              {selectedArticle && (
+                <NewsModal 
+                  article={selectedArticle} 
+                  onClose={closeArticle}
+                />
+              )}
             </div>
           );
         };
